@@ -1,0 +1,25 @@
+# ===== Dependencies =====
+node_modules/
+
+# ===== Frontend build output =====
+dist/
+dist-ssr/
+
+# ===== Rust / Tauri =====
+src-tauri/target/
+# gen/ is auto-generated schema by tauri dev/build, not committed
+src-tauri/gen/
+
+# ===== Logs =====
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== Editor / OS =====
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

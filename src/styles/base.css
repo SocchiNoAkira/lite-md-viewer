@@ -1,0 +1,381 @@
+/* base.css — 设计令牌（Design Tokens）+ 主题 + 布局骨架
+ *
+ * 对标 QClaw 预览器的视觉体系。CSS 只认 data-theme 属性，
+ * 主题解析由 theme.ts + index.html 内联脚本负责。
+ */
+
+/* ============ 字体栈 ============ */
+:root {
+  /* 衬线标题：Iowan Old Style (macOS) → Palatino → Georgia (Windows 兜底) */
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+    "Times New Roman", serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei",
+    "PingFang SC", "Helvetica Neue", sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "SF Mono", Menlo,
+    monospace;
+}
+
+/* ============ 亮色主题 ============ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* 应用背景（渐变） */
+  --bg-app-from: #f0f2f6;
+  --bg-app-to: #dfe3ea;
+
+  /* 文档纸 */
+  --bg-paper: #ffffff;
+  --bg-paper-grad-from: #ffffff;
+  --bg-paper-grad-to: #fcfcfd;
+
+  /* 文字 */
+  --fg: #1f2328;
+  --fg-muted: #57606a;
+  --fg-heading: #0d1117;
+
+  /* 边框 / 强调 */
+  --border: #d0d7de;
+  --border-soft: #e5e8ec;
+  --accent: #0969da;
+  --accent-strong: #0550ae;
+
+  /* 引用块 */
+  --quote-bg: #f6f8fa;
+  --quote-border: #0969da;
+
+  /* 行内代码 */
+  --code-inline-bg: #f6f8fa;
+  --code-inline-border: #d0d7de;
+  --code-inline-fg: #1f2328;
+
+  /* 表格 */
+  --table-header-bg: #f6f8fa;
+
+  /* 链接 */
+  --link: #0969da;
+
+  /* 阴影 */
+  --paper-shadow: 0 1px 3px rgba(31, 35, 40, 0.06),
+    0 12px 32px rgba(31, 35, 40, 0.10);
+
+  /* 工具栏 */
+  --toolbar-bg: rgba(255, 255, 255, 0.8);
+}
+
+/* ============ 暗色主题 ============ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-app-from: #0e1420;
+  --bg-app-to: #05070c;
+
+  --bg-paper: #161b22;
+  --bg-paper-grad-from: #161b22;
+  --bg-paper-grad-to: #13171d;
+
+  --fg: #e6edf3;
+  --fg-muted: #8b949e;
+  --fg-heading: #f0f6fc;
+
+  --border: #30363d;
+  --border-soft: #262c33;
+  --accent: #58a6ff;
+  --accent-strong: #79c0ff;
+
+  --quote-bg: #1c2128;
+  --quote-border: #58a6ff;
+
+  --code-inline-bg: #1f242c;
+  --code-inline-border: #30363d;
+  --code-inline-fg: #e6edf3;
+
+  --table-header-bg: #1c2128;
+
+  --link: #58a6ff;
+
+  --paper-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.5);
+
+  --toolbar-bg: rgba(13, 17, 23, 0.8);
+}
+
+/* ============ Reset ============ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* 确保 HTML hidden 属性始终生效（不被高优先级 display 声明覆盖） */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--fg);
+  /* 应用背景：柔和渐变 */
+  background: linear-gradient(180deg, var(--bg-app-from), var(--bg-app-to));
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* macOS：窗口透明，让原生液态玻璃（Liquid Glass）透出。
+ * 此时应用背景改为半透明，玻璃作为真正的底层质感。 */
+html[data-platform="macos"] {
+  background: transparent;
+}
+
+html[data-platform="macos"] body {
+  background: transparent;
+}
+
+/* ============ 布局骨架 ============ */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* 主内容区：阅读区 + TOC 侧栏并排 */
+#main-area {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ============ 工具栏（菜单栏样式） ============ */
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--toolbar-bg);
+  backdrop-filter: blur(12px);
+  flex-shrink: 0;
+  z-index: 10;
+  flex-wrap: nowrap;
+}
+
+/* macOS：窗口是 Overlay 悬浮标题栏（红绿灯按钮叠在内容之上）。
+ * 工具栏左侧预留红绿灯区域，避免「打开文件」等按钮与其重叠。
+ * 78px ≈ 20px 左边距 + 3 颗按钮(12px) + 2 个间距(8px) + 少量余量。 */
+html[data-platform="macos"] #toolbar {
+  padding-left: 78px;
+}
+
+/* 统一菜单栏按钮：无边框无背景，hover 高亮，文字不换行不压缩 */
+#toolbar button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+}
+
+#toolbar button:hover:not(:disabled) {
+  background: var(--quote-bg);
+  color: var(--accent);
+}
+
+#toolbar button:active:not(:disabled) {
+  background: var(--border-soft);
+}
+
+#toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============ 最近文件下拉（Phase 4） ============ */
+#recent-wrapper {
+  position: relative;
+}
+
+#recent-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 240px;
+  max-width: 420px;
+  max-height: 320px;
+  overflow-y: auto;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: var(--bg-paper);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--paper-shadow);
+  z-index: 100;
+}
+
+#recent-menu .recent-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+
+#recent-menu .recent-item:hover {
+  background: var(--quote-bg);
+  color: var(--accent);
+}
+
+#file-info {
+  flex: 1;
+  min-width: 0;
+  margin-left: 8px;
+  font-size: 13px;
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============ 阅读区容器 ============ */
+#reader {
+  flex: 1;
+  overflow-y: auto;
+  padding: 40px 24px 64px;
+  min-width: 0;
+}
+
+/* ============ TOC 大纲侧栏（Phase 5） ============ */
+#toc-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--toolbar-bg);
+  padding: 16px 12px;
+}
+
+#toc-sidebar .toc-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 8px 10px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 8px;
+}
+
+#toc-nav .toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#toc-nav .toc-item {
+  margin: 0;
+}
+
+#toc-nav .toc-item a {
+  display: block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--fg-muted);
+  font-size: 13px;
+  text-decoration: none;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+
+#toc-nav .toc-item a:hover {
+  background: var(--quote-bg);
+  color: var(--fg);
+}
+
+#toc-nav .toc-item.active a {
+  background: var(--quote-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 层级缩进 */
+#toc-nav .toc-level-2 a {
+  padding-left: 20px;
+}
+
+#toc-nav .toc-level-3 a {
+  padding-left: 32px;
+}
+
+#toc-nav .toc-empty {
+  font-size: 13px;
+  color: var(--fg-muted);
+  padding: 8px;
+}
+
+#empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--fg-muted);
+  font-size: 15px;
+}
+
+/* ============ 原文视图 ============ */
+.raw-view {
+  max-width: 82ch;
+  margin: 0 auto;
+  padding: clamp(32px, 5vw, 56px) clamp(24px, 5vw, 64px);
+  background: var(--bg-paper);
+  border-radius: 12px;
+  box-shadow: var(--paper-shadow);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  color: var(--fg);
+}
+
+/* ============ 全屏模式 ============ */
+/* 全屏时隐藏工具栏，阅读区扩宽 */
+:fullscreen #toolbar {
+  display: none;
+}
+
+:fullscreen #reader {
+  padding: 32px 24px 56px;
+}
+
+:fullscreen .markdown-body {
+  max-width: 96ch;
+}

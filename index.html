@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MD Viewer</title>
+    <script>
+      // 首帧防闪烁：在任何 CSS/JS 执行前设置 data-theme。
+      (function () {
+        try {
+          var saved = localStorage.getItem("md-viewer-theme");
+          var theme =
+            saved === "light" || saved === "dark"
+              ? saved
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.colorScheme = theme;
+          // macOS：标记平台，让 CSS 将 body 背景设为透明，露出液态玻璃，
+          // 并为 Overlay 标题栏的红绿灯预留工具栏左侧空间。
+          // 仅在 Tauri 窗口内标记：浏览器 dev 预览没有红绿灯，不应留白。
+          var isTauri =
+            "__TAURI_INTERNALS__" in window || "__TAURI__" in window;
+          if (isTauri && /Macintosh|Mac OS X/.test(navigator.userAgent)) {
+            document.documentElement.dataset.platform = "macos";
+          }
+        } catch (e) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app">
+      <!-- data-tauri-drag-region：按住工具栏空白处可拖动窗口。
+           仅元素自身（非按钮等子元素）触发拖动，双击为最大化。 -->
+      <header id="toolbar" data-tauri-drag-region>
+        <button id="btn-open" type="button">打开文件</button>
+        <div id="recent-wrapper">
+          <button id="btn-recent" type="button">最近文件</button>
+          <div id="recent-menu" style="display:none"></div>
+        </div>
+        <span id="file-info" data-tauri-drag-region>未打开文件</span>
+        <button id="btn-toggle" type="button" disabled>原文视图</button>
+        <button id="btn-export" type="button" disabled>导出 HTML</button>
+        <button id="btn-theme" type="button">🌙 暗色</button>
+        <button id="btn-fullscreen" type="button">全屏</button>
+      </header>
+      <div id="main-area">
+        <main id="reader">
+          <div id="empty-state">打开一个 .md 文件开始预览</div>
+          <article id="content" class="markdown-body" hidden></article>
+          <pre id="raw-view" class="raw-view" hidden></pre>
+        </main>
+        <aside id="toc-sidebar" hidden>
+          <div class="toc-header">大纲</div>
+          <nav id="toc-nav"></nav>
+        </aside>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

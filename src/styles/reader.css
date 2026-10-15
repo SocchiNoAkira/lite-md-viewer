@@ -1,0 +1,215 @@
+/* reader.css — 阅读区排版（对标 QClaw「文档纸」视觉）
+ *
+ * 关键细节：
+ * - 居中 82ch 文档纸，带渐变 + 阴影
+ * - 衬线标题，负字间距，text-wrap: balance
+ * - h2 上边框分隔线 + 上间距
+ * - 引用块 3px 左侧强调色边框
+ * - 表格圆角 + 表头背景
+ * - 行内代码细边框 + 浅背景
+ * - 链接 / 图片 / 列表 / 分隔线
+ */
+
+/* ============ 文档纸 ============ */
+.markdown-body {
+  max-width: 82ch;
+  margin: 0 auto;
+  padding: clamp(32px, 5vw, 56px) clamp(24px, 5vw, 64px);
+  background: linear-gradient(
+    180deg,
+    var(--bg-paper-grad-from),
+    var(--bg-paper-grad-to)
+  );
+  border-radius: 12px;
+  box-shadow: var(--paper-shadow);
+}
+
+/* ============ 标题 ============ */
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  color: var(--fg-heading);
+  line-height: 1.25;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+}
+
+.markdown-body h1 {
+  font-size: clamp(2.2rem, 4.4vw, 3.35rem);
+  margin-top: 0;
+  margin-bottom: 0.5em;
+  letter-spacing: -0.03em;
+}
+
+.markdown-body h2 {
+  font-size: 1.65rem;
+  padding-top: 0.6em;
+  border-top: 1px solid var(--border);
+}
+
+.markdown-body h3 {
+  font-size: 1.35rem;
+}
+
+.markdown-body h4 {
+  font-size: 1.15rem;
+}
+
+.markdown-body h5 {
+  font-size: 1.05rem;
+}
+
+.markdown-body h6 {
+  font-size: 0.95rem;
+  color: var(--fg-muted);
+}
+
+/* ============ 段落 / 列表 ============ */
+.markdown-body p {
+  margin: 0.9em 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.6em;
+  margin: 0.9em 0;
+}
+
+.markdown-body li {
+  margin: 0.3em 0;
+}
+
+/* 任务列表 */
+.markdown-body li.task-list-item {
+  list-style: none;
+  margin-left: -1.4em;
+}
+
+.markdown-body li.task-list-item input[type="checkbox"] {
+  margin-right: 0.5em;
+  accent-color: var(--accent);
+}
+
+/* ============ 强调 ============ */
+.markdown-body strong {
+  font-weight: 650;
+}
+
+.markdown-body em {
+  font-style: italic;
+}
+
+.markdown-body del {
+  color: var(--fg-muted);
+}
+
+/* ============ 行内代码 ============ */
+.markdown-body code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--code-inline-bg);
+  color: var(--code-inline-fg);
+  border: 1px solid var(--code-inline-border);
+  border-radius: 4px;
+  padding: 0.12em 0.4em;
+  white-space: nowrap;
+}
+
+/* ============ 引用块 ============ */
+.markdown-body blockquote {
+  margin: 1.2em 0;
+  padding: 0.7em 1.2em;
+  border-left: 3px solid var(--quote-border);
+  background: var(--quote-bg);
+  border-radius: 0 8px 8px 0;
+  color: var(--fg-muted);
+}
+
+.markdown-body blockquote > :first-child {
+  margin-top: 0;
+}
+
+.markdown-body blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* ============ 链接 ============ */
+.markdown-body a {
+  color: var(--link);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.markdown-body a:hover {
+  border-bottom-color: var(--link);
+}
+
+/* ============ 表格 ============ */
+.markdown-body table {
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.2em 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 0.95em;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: left;
+}
+
+.markdown-body th {
+  background: var(--table-header-bg);
+  font-weight: 600;
+  color: var(--fg-heading);
+}
+
+.markdown-body tr:last-child td {
+  border-bottom: none;
+}
+
+/* ============ 图片 ============ */
+.markdown-body img {
+  max-width: 100%;
+  border-radius: 8px;
+  display: block;
+  margin: 1em auto;
+}
+
+/* ============ 分隔线 ============ */
+.markdown-body hr {
+  border: none;
+  border-top: 2px solid var(--border-soft);
+  margin: 2em 0;
+}
+
+/* ============ 滚动条 ============ */
+#reader::-webkit-scrollbar {
+  width: 12px;
+}
+
+#reader::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+#reader::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-muted);
+  background-clip: content-box;
+  border: 3px solid transparent;
+}

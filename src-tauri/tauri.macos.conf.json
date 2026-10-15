@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "MD Viewer",
+        "width": 1000,
+        "height": 720,
+        "minWidth": 600,
+        "minHeight": 400,
+        "center": true,
+        "dragDropEnabled": true,
+        "transparent": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 14, "y": 22 }
+      }
+    ]
+  },
+  "bundle": {
+    "targets": ["app", "dmg"],
+    "macOS": {
+      "minimumSystemVersion": "10.13"
+    }
+  }
+}

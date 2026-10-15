@@ -1,0 +1,32 @@
+[package]
+name = "md-viewer"
+version = "0.1.0"
+description = "轻量级 Markdown 预览器"
+authors = ["md-viewer"]
+edition = "2021"
+
+[lib]
+name = "md_viewer_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api"] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+notify = "6"
+
+# macOS 专属依赖：仅 mac 构建时引入（Windows/Linux 不编译）
+[target.'cfg(target_os = "macos")'.dependencies]
+window-vibrancy = "0.8"
+
+# release 体积优化：<10MB 目标的关键。
+[profile.release]
+opt-level = "s"          # 优化体积
+lto = true               # 链接时优化
+codegen-units = 1        # 单代码生成单元（配合 lto 最小体积）
+strip = true             # 剥离符号
+panic = "abort"          # 移除 unwinding 代码
