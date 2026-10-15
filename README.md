@@ -91,4 +91,4 @@ md-viewer/
 
 ## 许可证
 
-MIT
+[MIT](LICENSE)
