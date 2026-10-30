@@ -16,6 +16,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# ===== Local scratch / test fixtures =====
+# 本地渲染与编辑测试文件，不入库
+/test.md
+
 # ===== Editor / OS =====
 .vscode/
 .idea/

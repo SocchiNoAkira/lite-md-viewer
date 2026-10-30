@@ -42,7 +42,8 @@
           <div id="recent-menu" style="display:none"></div>
         </div>
         <span id="file-info" data-tauri-drag-region>未打开文件</span>
-        <button id="btn-toggle" type="button" disabled>原文视图</button>
+        <button id="btn-toggle" type="button" disabled>编辑</button>
+        <button id="btn-save" type="button" disabled>保存</button>
         <button id="btn-export" type="button" disabled>导出 HTML</button>
         <button id="btn-theme" type="button">🌙 暗色</button>
         <button id="btn-fullscreen" type="button">全屏</button>
@@ -51,7 +52,16 @@
         <main id="reader">
           <div id="empty-state">打开一个 .md 文件开始预览</div>
           <article id="content" class="markdown-body" hidden></article>
-          <pre id="raw-view" class="raw-view" hidden></pre>
+          <!-- 原文视图即编辑器：直接在 Markdown 源码上修改。 -->
+          <textarea
+            id="raw-view"
+            class="raw-view"
+            wrap="soft"
+            spellcheck="false"
+            autocomplete="off"
+            autocapitalize="off"
+            hidden
+          ></textarea>
         </main>
         <aside id="toc-sidebar" hidden>
           <div class="toc-header">大纲</div>

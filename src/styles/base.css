@@ -349,21 +349,41 @@ html[data-platform="macos"] #toolbar {
   font-size: 15px;
 }
 
-/* ============ 原文视图 ============ */
+/* ============ 原文视图（可编辑 textarea，编辑器式满铺） ============ */
 .raw-view {
-  max-width: 82ch;
-  margin: 0 auto;
-  padding: clamp(32px, 5vw, 56px) clamp(24px, 5vw, 64px);
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 20px 28px 28px;
+  border: none;
+  outline: none;
+  resize: none;
   background: var(--bg-paper);
-  border-radius: 12px;
-  box-shadow: var(--paper-shadow);
   font-family: var(--font-mono);
   font-size: 0.9em;
-  line-height: 1.6;
+  line-height: 1.7;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  overflow-y: auto;
   color: var(--fg);
+  caret-color: var(--accent);
+  tab-size: 4;
+}
+
+/* 编辑模式：编辑区铺满阅读区、内部滚动（无外边距、圆角、阴影）。
+ * 高度固定，避免内容增长触发整页重排（大文件输入不掉帧）。 */
+#reader.raw-mode {
+  display: flex;
+  padding: 0;
+  overflow: hidden;
+}
+
+#reader.raw-mode .raw-view {
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 
 /* ============ 全屏模式 ============ */
@@ -374,6 +394,11 @@ html[data-platform="macos"] #toolbar {
 
 :fullscreen #reader {
   padding: 32px 24px 56px;
+}
+
+/* 全屏下编辑视图同样满铺，不重新加内边距 */
+:fullscreen #reader.raw-mode {
+  padding: 0;
 }
 
 :fullscreen .markdown-body {

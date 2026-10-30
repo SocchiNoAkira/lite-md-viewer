@@ -25,6 +25,7 @@ import "./styles/highlight-theme.css";
 
 const btnOpen = document.getElementById("btn-open") as HTMLButtonElement;
 const btnRecent = document.getElementById("btn-recent") as HTMLButtonElement;
+const btnSave = document.getElementById("btn-save") as HTMLButtonElement;
 const btnExport = document.getElementById("btn-export") as HTMLButtonElement;
 const btnTheme = document.getElementById("btn-theme") as HTMLButtonElement;
 const btnToggle = document.getElementById("btn-toggle") as HTMLButtonElement;
@@ -32,16 +33,28 @@ const btnFullscreen = document.getElementById("btn-fullscreen") as HTMLButtonEle
 const fileInfo = document.getElementById("file-info") as HTMLSpanElement;
 const emptyState = document.getElementById("empty-state") as HTMLDivElement;
 const content = document.getElementById("content") as HTMLElement;
-const rawView = document.getElementById("raw-view") as HTMLPreElement;
+const rawView = document.getElementById("raw-view") as HTMLTextAreaElement;
 const recentMenu = document.getElementById("recent-menu") as HTMLDivElement;
 const tocSidebar = document.getElementById("toc-sidebar") as HTMLElement;
 const tocNav = document.getElementById("toc-nav") as HTMLElement;
 const reader = document.getElementById("reader") as HTMLElement;
 
-/** 当前文件原始文本（用于原文视图切换）。 */
+/** 缓冲区：当前 Markdown 源码（编辑结果在这里落地）。 */
 let currentText = "";
 /** 当前文件名（用于标题展示）。 */
 let currentFileName: string | null = null;
+/** 当前文件绝对路径（另存为后更新；浏览器环境为 null）。 */
+let currentPath: string | null = null;
+/** 缓冲区是否有未保存到磁盘的修改。 */
+let dirty = false;
+/** 渲染区是否落后于缓冲区（编辑后尚未重新渲染）。 */
+let contentStale = false;
+/** 文件被外部程序改动但编辑内容未同步（仅提示，不覆盖编辑）。 */
+let externalChangeNotice = false;
+/** 加载文件时检测到的行尾风格，保存时还原，避免整文件 diff。 */
+let lineEnding = "\n";
+/** 原文件是否带 UTF-8 BOM。 */
+let hasBom = false;
 /** 取消文件监听的函数。 */
 let stopWatching: (() => void) | null = null;
 /** 取消 scroll-spy 的函数。 */
@@ -49,17 +62,103 @@ let stopScrollSpy: (() => void) | null = null;
 
 type ViewMode = "render" | "raw";
 
+// ============ 文本格式保持（行尾 / BOM） ============
+
+/** 编辑器与内部缓冲区统一用 LF，加载时归一化。 */
+function normalizeText(raw: string): string {
+  const body = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
+  return body.includes("\r\n") ? body.replace(/\r\n/g, "\n") : body;
+}
+
+/** 记录原文件的行尾风格与 BOM，返回归一化后的文本。 */
+function adoptText(raw: string): string {
+  hasBom = raw.charCodeAt(0) === 0xfeff;
+  lineEnding = raw.includes("\r\n") ? "\r\n" : "\n";
+  return normalizeText(raw);
+}
+
+/** 保存前恢复原文件的行尾风格与 BOM。 */
+function restoreText(text: string): string {
+  const body = lineEnding === "\r\n" ? text.replace(/\r?\n/g, "\r\n") : text;
+  return hasBom ? `\uFEFF${body}` : body;
+}
+
+// ============ 状态显示 ============
+
+/** 同步标题（未保存标记）与保存按钮可用性。 */
+function updateStatusUi(): void {
+  document.title = currentFileName
+    ? `${dirty ? "● " : ""}${currentFileName} - MD Viewer`
+    : "MD Viewer";
+  btnSave.disabled = !dirty;
+  if (currentPath) {
+    fileInfo.textContent = externalChangeNotice
+      ? `${currentPath}（外部已修改）`
+      : currentPath;
+    fileInfo.title = currentPath;
+  }
+}
+
+/** 编辑区内容有变动：只置脏，不做任何渲染（保证打字性能）。 */
+function markEdited(): void {
+  contentStale = true;
+  if (!dirty) {
+    dirty = true;
+    updateStatusUi();
+  }
+}
+
+/** 把编辑区内容同步到缓冲区（仅编辑视图且有未保存修改时）。 */
+function syncBufferFromEditor(): void {
+  if (!rawView.hidden && dirty) {
+    currentText = rawView.value;
+  }
+}
+
+/** 有未保存修改时确认一次；返回 false 表示用户取消。 */
+function confirmDiscard(): boolean {
+  if (!dirty) return true;
+  return window.confirm("当前文件有未保存的修改，确定放弃并继续吗？");
+}
+
 /**
- * 设置视图模式：render（渲染）/ raw（原文）。
+ * 设置视图模式：render（渲染）/ raw（编辑原文）。
+ *
+ * 进入编辑时按滚动比例定位，避免长文档切换后跳回顶部；
+ * 离开编辑时由调用方负责同步缓冲区并重新渲染。
  */
 function setViewMode(mode: ViewMode): void {
   const isRaw = mode === "raw";
+  const fromRender = isRaw && rawView.hidden;
+
+  // 进入编辑前记录阅读区滚动比例。
+  let ratio = 0;
+  if (fromRender) {
+    const max = reader.scrollHeight - reader.clientHeight;
+    ratio = max > 0 ? reader.scrollTop / max : 0;
+  }
+
+  if (isRaw) {
+    rawView.value = currentText;
+    reader.classList.add("raw-mode");
+    tocSidebar.hidden = true;
+    if (stopScrollSpy) {
+      stopScrollSpy();
+      stopScrollSpy = null;
+    }
+  } else {
+    reader.classList.remove("raw-mode");
+  }
+
   rawView.hidden = !isRaw;
   content.hidden = isRaw;
-  emptyState.hidden = currentText !== "";
-  btnToggle.textContent = isRaw ? "渲染视图" : "原文视图";
+  emptyState.hidden = currentFileName !== null;
+  btnToggle.textContent = isRaw ? "预览" : "编辑";
+
   if (isRaw) {
-    rawView.textContent = currentText;
+    const max = rawView.scrollHeight - rawView.clientHeight;
+    rawView.scrollTop = max > 0 ? ratio * max : 0;
+    rawView.focus({ preventScroll: true });
   }
 }
 
@@ -71,6 +170,7 @@ async function render(text: string): Promise<void> {
   setupCopyButtons(content);
   emptyState.hidden = true;
   content.hidden = false;
+  contentStale = false;
   // 异步渲染数学公式 + Mermaid（懒加载，无则跳过）。
   await renderKatex(content);
   await renderMermaidBlocks(content);
@@ -107,12 +207,18 @@ function updateToc(): void {
 function showEmpty(): void {
   currentText = "";
   currentFileName = null;
+  currentPath = null;
+  dirty = false;
+  contentStale = false;
+  externalChangeNotice = false;
   emptyState.hidden = false;
   content.hidden = true;
   rawView.hidden = true;
+  reader.classList.remove("raw-mode");
   fileInfo.textContent = "未打开文件";
   document.title = "MD Viewer";
   btnToggle.disabled = true;
+  btnSave.disabled = true;
   btnExport.disabled = true;
   tocSidebar.hidden = true;
   // 停止监听。
@@ -138,13 +244,28 @@ async function startWatching(path: string): Promise<void> {
   }
   try {
     stopWatching = await watchFile(path, async (changedPath) => {
-      // 文件变化 → 重新读取并渲染。
+      // 文件变化 → 重新读取；自身保存引起的事件与未保存编辑都需跳过。
       try {
-        const text = await readTextFile(changedPath);
-        currentText = text;
-        // 仅在渲染视图下重新渲染（原文视图也会刷新文本）。
-        await render(text);
-        setViewMode(rawView.hidden ? "render" : "raw");
+        const raw = await readTextFile(changedPath);
+        const incoming = normalizeText(raw);
+        // 内容未变（含「保存后 watcher 回环」）→ 什么都不做。
+        if (incoming === currentText || incoming === rawView.value) return;
+        if (dirty) {
+          // 有未保存编辑：不覆盖，仅提示（保存时会覆盖外部版本）。
+          if (!externalChangeNotice) {
+            externalChangeNotice = true;
+            updateStatusUi();
+          }
+          return;
+        }
+        currentText = adoptText(raw);
+        externalChangeNotice = false;
+        if (rawView.hidden) {
+          await render(currentText);
+        } else {
+          rawView.value = currentText;
+        }
+        updateStatusUi();
       } catch (err) {
         console.error("重新读取失败:", err);
       }
@@ -158,13 +279,16 @@ async function startWatching(path: string): Promise<void> {
  * 打开指定路径的文件并渲染。
  */
 async function openPath(path: string): Promise<void> {
+  // 切换文件会丢弃编辑内容，先确认一次。
+  if (!confirmDiscard()) return;
   try {
-    const text = await readTextFile(path);
+    const text = adoptText(await readTextFile(path));
     currentText = text;
+    currentPath = path;
     currentFileName = path.split(/[\\/]/).pop() ?? path;
-    fileInfo.textContent = path;
-    fileInfo.title = path;
-    document.title = `${currentFileName} - MD Viewer`;
+    dirty = false;
+    externalChangeNotice = false;
+    updateStatusUi();
     btnToggle.disabled = false;
     btnExport.disabled = false;
     await render(text);
@@ -211,11 +335,72 @@ async function initOpenFileChannel(): Promise<void> {
   }
 }
 
-/** 切换渲染/原文视图。 */
+/** 切换渲染/编辑视图。 */
 function toggleView(): void {
-  if (!currentText) return;
-  const isRaw = !rawView.hidden;
-  setViewMode(isRaw ? "render" : "raw");
+  if (!currentFileName) return;
+  if (rawView.hidden) {
+    setViewMode("raw");
+    return;
+  }
+
+  // 编辑 → 预览：记录滚动比例，同步缓冲区后重新渲染。
+  const textMax = rawView.scrollHeight - rawView.clientHeight;
+  const ratio = textMax > 0 ? rawView.scrollTop / textMax : 0;
+  syncBufferFromEditor();
+  setViewMode("render");
+  void render(currentText).then(() => {
+    const max = reader.scrollHeight - reader.clientHeight;
+    reader.scrollTop = max > 0 ? ratio * max : 0;
+  });
+}
+
+// ============ 保存 ============
+
+/**
+ * 保存当前缓冲区到磁盘。
+ *
+ * 有路径时直接写回原文件（不弹对话框），无路径或要求另存为时弹保存对话框；
+ * 浏览器环境下退化为下载副本。
+ */
+async function saveMarkdown(saveAs = false): Promise<void> {
+  if (!currentFileName) return;
+  syncBufferFromEditor();
+
+  let path = currentPath;
+  if (!path || saveAs) {
+    const defaultName = currentFileName || "untitled.md";
+    const picked = await saveFileDialog(defaultName, "md");
+    if (!picked) {
+      // 对话框不可用（浏览器调试）：直接下载一份。
+      if (!path) {
+        downloadBlob(
+          new Blob([currentText], { type: "text/markdown;charset=utf-8" }),
+          defaultName
+        );
+      }
+      return;
+    }
+    path = picked;
+  }
+
+  try {
+    await writeTextFile(path, restoreText(currentText));
+    if (path !== currentPath) {
+      // 另存为：后续保存与监听都指向新文件。
+      currentPath = path;
+      currentFileName = path.split(/[\\/]/).pop() ?? path;
+      await startWatching(path);
+      await addRecentFile(path);
+      await refreshRecentMenu();
+    }
+    dirty = false;
+    externalChangeNotice = false;
+    updateStatusUi();
+    if (currentPath) fileInfo.textContent = `${currentPath}（已保存）`;
+  } catch (err) {
+    console.error("保存失败:", err);
+    fileInfo.textContent = `保存失败: ${String(err)}`;
+  }
 }
 
 /** 切换全屏模式。 */
@@ -301,7 +486,25 @@ btnRecent.addEventListener("click", (e) => {
   void toggleRecentMenu();
 });
 btnToggle.addEventListener("click", toggleView);
+btnSave.addEventListener("click", () => void saveMarkdown());
 btnFullscreen.addEventListener("click", toggleFullscreen);
+
+// 编辑区：只置脏，不触发渲染；Tab 插入缩进而非切换焦点。
+rawView.addEventListener("input", markEdited);
+rawView.addEventListener("keydown", (e) => {
+  if (e.key !== "Tab" || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+  e.preventDefault();
+  const { selectionStart: start, selectionEnd: end, value } = rawView;
+  const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+  const affected = value.slice(lineStart, end);
+  if (affected.includes("\n")) {
+    // 多行：整体缩进所选行。
+    rawView.setRangeText(affected.replace(/^/gm, "  "), lineStart, end, "select");
+  } else {
+    rawView.setRangeText("  ", start, end, "end");
+  }
+  markEdited();
+});
 
 // ============ 导出 HTML（Phase 5） ============
 
@@ -310,14 +513,30 @@ btnFullscreen.addEventListener("click", toggleFullscreen);
  */
 async function exportHtml(): Promise<void> {
   if (!currentText) return;
+  syncBufferFromEditor();
   const name = currentFileName ?? "export";
   const baseName = name.replace(/\.[^.]+$/, "");
   const defaultName = `${baseName}.html`;
 
+  // 编辑后渲染区可能落后于缓冲区：先刷新一次，导出内容才与编辑一致。
+  if (contentStale) {
+    const wasRaw = !rawView.hidden;
+    await render(currentText);
+    if (wasRaw) {
+      content.hidden = true;
+      rawView.hidden = false;
+      tocSidebar.hidden = true;
+      if (stopScrollSpy) {
+        stopScrollSpy();
+        stopScrollSpy = null;
+      }
+    }
+  }
+
   const html = await buildExportHtml(name);
 
   // Tauri 环境：保存对话框 + 写文件；浏览器环境：直接下载。
-  const path = await saveFileDialog(defaultName);
+  const path = await saveFileDialog(defaultName, "html");
   if (path) {
     await writeTextFile(path, html);
   } else {
@@ -340,13 +559,16 @@ document.addEventListener("fullscreenchange", () => {
   btnFullscreen.textContent = document.fullscreenElement ? "退出全屏" : "全屏";
 });
 
-// 键盘快捷键：Ctrl+O 打开，Ctrl+F 搜索（Phase 5），Ctrl+/- 字号，F11 全屏。
+// 键盘快捷键：Ctrl+O 打开，Ctrl+S 保存，Ctrl+/- 字号，F11 全屏。
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey) {
     const key = e.key.toLowerCase();
     if (key === "o") {
       e.preventDefault();
       void pickFile();
+    } else if (key === "s") {
+      e.preventDefault();
+      void saveMarkdown(e.shiftKey);
     } else if (key === "=" || key === "+") {
       e.preventDefault();
       adjustFontSize(10);

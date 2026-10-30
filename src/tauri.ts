@@ -50,17 +50,28 @@ export async function writeTextFile(path: string, content: string): Promise<void
   await invoke("write_text_file", { path, content });
 }
 
+/** 保存对话框的文件类型：Markdown 源文件 / 导出的 HTML。 */
+export type SaveKind = "md" | "html";
+
 /**
  * 弹出保存文件对话框，返回目标路径（取消返回 null）。
  */
 export async function saveFileDialog(
-  defaultName: string
+  defaultName: string,
+  kind: SaveKind = "html"
 ): Promise<string | null> {
+  const filters: { name: string; extensions: string[] }[] =
+    kind === "md"
+      ? [
+          { name: "Markdown", extensions: ["md", "markdown", "mdown", "mkd"] },
+          { name: "所有文件", extensions: ["*"] },
+        ]
+      : [
+          { name: "HTML", extensions: ["html", "htm"] },
+          { name: "所有文件", extensions: ["*"] },
+        ];
   try {
-    const selected = await save({
-      defaultPath: defaultName,
-      filters: [{ name: "HTML", extensions: ["html", "htm"] }],
-    });
+    const selected = await save({ defaultPath: defaultName, filters });
     return typeof selected === "string" ? selected : null;
   } catch (err) {
     console.error("保存对话框不可用:", err);
